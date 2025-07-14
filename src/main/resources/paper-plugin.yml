@@ -1,0 +1,5 @@
+name: AnotherBedWars
+version: '1.0-SNAPSHOT'
+main: org.azurith.anotherbedwars.AnotherBedWars
+api-version: '1.21'
+load: STARTUP
