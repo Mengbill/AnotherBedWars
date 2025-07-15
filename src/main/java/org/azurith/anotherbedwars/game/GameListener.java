@@ -18,7 +18,7 @@ public class GameListener implements Listener {
     }
 
     @EventHandler(priority = EventPriority.LOWEST)
-    public void onPlayerPortal(PlayerTeleportEvent event){
+    public void onPlayerTeleport(PlayerTeleportEvent event){
         World target = event.getTo().getWorld();
         if (target != null && (target.getEnvironment() == World.Environment.THE_END || target.getEnvironment() == World.Environment.NETHER)){
             event.setCancelled(true);
