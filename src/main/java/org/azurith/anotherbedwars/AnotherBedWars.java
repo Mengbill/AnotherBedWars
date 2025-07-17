@@ -1,5 +1,8 @@
 package org.azurith.anotherbedwars;
 
+import com.infernalsuite.asp.api.AdvancedSlimePaperAPI;
+import com.infernalsuite.asp.api.loaders.SlimeLoader;
+import com.infernalsuite.asp.loaders.file.FileLoader;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.apache.commons.io.FileUtils;
@@ -25,6 +28,17 @@ import java.util.logging.Level;
 public final class AnotherBedWars extends JavaPlugin {
 
     private static boolean restartNeeded = false;
+
+    private AdvancedSlimePaperAPI asp;
+    private SlimeLoader slimeLoader;
+
+    public AdvancedSlimePaperAPI getAsp() {
+        return asp;
+    }
+
+    public SlimeLoader getSlimeLoader() {
+        return slimeLoader;
+    }
 
     @Override
     public void onLoad() {
@@ -78,29 +92,28 @@ public final class AnotherBedWars extends JavaPlugin {
             getLogger().log(Level.SEVERE, "尝试操作 bukkit.yml 时发生错误", e);
             Bukkit.getPluginManager().disablePlugin(this);
         }
-    }
-
-    @Override
-    public void onEnable() {
-        // Plugin startup logic
+        createPluginFolder();
         if (restartNeeded) {
             getLogger().log(Level.WARNING, "即将重启服务器以应用配置更改");
             Bukkit.getScheduler().runTaskLater(this, Bukkit::restart, 20);
             return;
         }
-        String[] useless_worlds = {"world", "world_nether", "world_the_end"};
-        for (String world : useless_worlds) {
-            File worldFolder = new File(Bukkit.getServer().getWorldContainer(), world);
-            if (worldFolder.exists() && worldFolder.isDirectory()) {
-                try {
-                    FileUtils.deleteDirectory(worldFolder);
-                    getLogger().log(Level.WARNING, "正在清理世界 " + world);
-                } catch (IOException e) {
-                    getLogger().log(Level.SEVERE, "尝试清理世界 " + world + " 时发生错误", e);
-                }
-            }
+        clearUselessWorlds();
+    }
+
+    @Override
+    public void onEnable() {
+        // Plugin startup logic
+        if (!isAdvancedSlimePaperAPIPresent()) {
+            getLogger().log(Level.SEVERE, "未找到 AdvancedSlimePaperAPI 请检查服务器依赖");
+            Bukkit.getPluginManager().disablePlugin(this);
+            return;
         }
+        asp = AdvancedSlimePaperAPI.instance();
+        slimeLoader = new FileLoader(new File(getDataFolder(),"slime_worlds"));
+
         Bukkit.getPluginManager().registerEvents(new GameListener(), this);
+
         getLogger().log(Level.WARNING, "插件所需运行环境已配置完成 正在启动插件");
         Bukkit.getConsoleSender().sendMessage(Component.newline()
                 .appendNewline()
@@ -123,6 +136,44 @@ public final class AnotherBedWars extends JavaPlugin {
     public void onDisable() {
         // Plugin shutdown logic
         Bukkit.getScheduler().cancelTasks(this);
+    }
+
+    private void createPluginFolder() {
+        if (!getDataFolder().exists() && !getDataFolder().mkdirs()) {
+            getLogger().log(Level.SEVERE, "无法创建插件数据目录: " + getDataFolder().getAbsolutePath());
+            Bukkit.getPluginManager().disablePlugin(this);
+            return;
+        }
+        File slime_worlds = new File(getDataFolder(),"slime_worlds");
+        if (!slime_worlds.exists() && !slime_worlds.mkdirs()) {
+            getLogger().log(Level.SEVERE, "无法创建插件数据目录: slime_worlds: " + slime_worlds.getAbsolutePath());
+            Bukkit.getPluginManager().disablePlugin(this);
+        }
+    }
+
+    private void clearUselessWorlds() {
+        String[] useless_worlds = {"world", "world_nether", "world_the_end"};
+        for (String world : useless_worlds) {
+            File worldFolder = new File(getServer().getWorldContainer(), world);
+            if (worldFolder.exists() && worldFolder.isDirectory()) {
+                try {
+                    FileUtils.deleteDirectory(worldFolder);
+                    getLogger().log(Level.WARNING, "正在清理世界 " + world);
+                } catch (IOException e) {
+                    getLogger().log(Level.SEVERE, "尝试清理世界 " + world + " 时发生错误", e);
+                    Bukkit.getPluginManager().disablePlugin(this);
+                }
+            }
+        }
+    }
+
+    private boolean isAdvancedSlimePaperAPIPresent() {
+        try {
+            Class.forName("com.infernalsuite.asp.api.AdvancedSlimePaperAPI");
+            return true;
+        } catch (ClassNotFoundException e) {
+            return false;
+        }
     }
 
     @Override
