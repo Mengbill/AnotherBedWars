@@ -6,7 +6,7 @@ import com.infernalsuite.asp.loaders.file.FileLoader;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.apache.commons.io.FileUtils;
-import org.azurith.anotherbedwars.game.GameListener;
+import org.azurith.anotherbedwars.server.ServerManager;
 import org.bukkit.Bukkit;
 import org.bukkit.block.Biome;
 import org.bukkit.configuration.file.YamlConfiguration;
@@ -32,6 +32,8 @@ public final class AnotherBedWars extends JavaPlugin {
     private AdvancedSlimePaperAPI asp;
     private SlimeLoader slimeLoader;
 
+    private ServerManager serverManager;
+
     public AdvancedSlimePaperAPI getAsp() {
         return asp;
     }
@@ -43,6 +45,7 @@ public final class AnotherBedWars extends JavaPlugin {
     @Override
     public void onLoad() {
         getLogger().log(Level.WARNING, "正在为插件运行配置所需环境");
+        //修改 server.properties 以适配插件运行
         try {
             File file = new File(Bukkit.getServer().getWorldContainer(), "server.properties");
             List<String> lines = Files.readAllLines(file.toPath(), StandardCharsets.UTF_8);
@@ -66,8 +69,9 @@ public final class AnotherBedWars extends JavaPlugin {
             }
         } catch (Exception e) {
             getLogger().log(Level.SEVERE, "尝试操作 server.properties 时发生错误", e);
-            Bukkit.getPluginManager().disablePlugin(this);
+            getServer().getPluginManager().disablePlugin(this);
         }
+        //修改 bukkit.yml 以适配插件运行
         try {
             File bukkitFile = new File(Bukkit.getServer().getWorldContainer(), "bukkit.yml");
             YamlConfiguration bukkitYaml = YamlConfiguration.loadConfiguration(bukkitFile);
@@ -90,32 +94,35 @@ public final class AnotherBedWars extends JavaPlugin {
             }
         } catch (Exception e) {
             getLogger().log(Level.SEVERE, "尝试操作 bukkit.yml 时发生错误", e);
-            Bukkit.getPluginManager().disablePlugin(this);
+            getServer().getPluginManager().disablePlugin(this);
         }
+        //创建插件数据目录
         createPluginFolder();
         if (restartNeeded) {
             getLogger().log(Level.WARNING, "即将重启服务器以应用配置更改");
-            Bukkit.getScheduler().runTaskLater(this, Bukkit::restart, 20);
+            getServer().getScheduler().runTaskLater(this, getServer()::restart, 20);
             return;
         }
+        //清理所有无用的世界
         clearUselessWorlds();
+        saveDefaultConfig();
     }
 
     @Override
     public void onEnable() {
-        // Plugin startup logic
+        //检测 AdvancedSlimePaper API 依赖是否存在
         if (!isAdvancedSlimePaperAPIPresent()) {
             getLogger().log(Level.SEVERE, "未找到 AdvancedSlimePaperAPI 请检查服务器依赖");
-            Bukkit.getPluginManager().disablePlugin(this);
+            getServer().getPluginManager().disablePlugin(this);
             return;
         }
+        //初始化 AdvancedSlimePaper API
         asp = AdvancedSlimePaperAPI.instance();
-        slimeLoader = new FileLoader(new File(getDataFolder(),"slime_worlds"));
-
-        Bukkit.getPluginManager().registerEvents(new GameListener(), this);
-
+        slimeLoader = new FileLoader(new File(getDataFolder(), "slime_worlds"));
+        serverManager = new ServerManager(this);
+        serverManager.enable();
         getLogger().log(Level.WARNING, "插件所需运行环境已配置完成 正在启动插件");
-        Bukkit.getConsoleSender().sendMessage(Component.newline()
+        getServer().getConsoleSender().sendMessage(Component.newline()
                 .appendNewline()
                 .append(Component.text(
                                 """
@@ -134,20 +141,20 @@ public final class AnotherBedWars extends JavaPlugin {
 
     @Override
     public void onDisable() {
-        // Plugin shutdown logic
-        Bukkit.getScheduler().cancelTasks(this);
+        // 清理所有 Task
+        getServer().getScheduler().cancelTasks(this);
     }
 
     private void createPluginFolder() {
         if (!getDataFolder().exists() && !getDataFolder().mkdirs()) {
             getLogger().log(Level.SEVERE, "无法创建插件数据目录: " + getDataFolder().getAbsolutePath());
-            Bukkit.getPluginManager().disablePlugin(this);
+            getServer().getPluginManager().disablePlugin(this);
             return;
         }
-        File slime_worlds = new File(getDataFolder(),"slime_worlds");
+        File slime_worlds = new File(getDataFolder(), "slime_worlds");
         if (!slime_worlds.exists() && !slime_worlds.mkdirs()) {
             getLogger().log(Level.SEVERE, "无法创建插件数据目录: slime_worlds: " + slime_worlds.getAbsolutePath());
-            Bukkit.getPluginManager().disablePlugin(this);
+            getServer().getPluginManager().disablePlugin(this);
         }
     }
 
@@ -161,7 +168,7 @@ public final class AnotherBedWars extends JavaPlugin {
                     getLogger().log(Level.WARNING, "正在清理世界 " + world);
                 } catch (IOException e) {
                     getLogger().log(Level.SEVERE, "尝试清理世界 " + world + " 时发生错误", e);
-                    Bukkit.getPluginManager().disablePlugin(this);
+                    getServer().getPluginManager().disablePlugin(this);
                 }
             }
         }
