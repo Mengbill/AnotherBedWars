@@ -14,14 +14,14 @@ public class ServerManager {
     public ServerManager(AnotherBedWars plugin) {
         this.plugin = plugin;
         this.setupManager = new SetupManager(this);
-        this.serverMode = ServerMode.valueOf(getPlugin().getConfig().getString("SERVER_MODE"));
-        plugin.getServer().getPluginManager().registerEvents(new ServerGlobalListener(), plugin);
+        this.serverMode = plugin.getConfigManager().getPluginConfig().server.server_mode;
     }
 
     public void enable(){
         if (serverMode == ServerMode.SETUP){
             setupManager.enable();
         }
+        plugin.getServer().getPluginManager().registerEvents(new ServerGlobalListener(), plugin);
     }
 
     public AnotherBedWars getPlugin() {
