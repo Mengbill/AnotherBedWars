@@ -45,7 +45,7 @@ public class ConfigManager {
         }
     }
 
-    private void savePluginConfig() {
+    public void savePluginConfig() {
         try {
             pluginConfigLoader.save(pluginConfigLoader.createNode().set(PluginConfig.class, pluginConfig));
         } catch (ConfigurateException e) {

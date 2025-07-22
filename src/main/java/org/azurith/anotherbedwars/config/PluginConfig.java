@@ -9,7 +9,7 @@ import org.spongepowered.configurate.objectmapping.meta.Setting;
 public class PluginConfig {
 
     @Setting("server")
-    public Server server = new Server();
+    public final Server server = new Server();
 
     @ConfigSerializable
     public static class Server {
